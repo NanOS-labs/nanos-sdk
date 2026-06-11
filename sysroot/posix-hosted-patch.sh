@@ -58,6 +58,26 @@ if [ -f "$SIG" ] && ! grep -q 'NanOS sa_flags' "$SIG"; then
 	echo "  patched sys/signal.h (SA_ONSTACK/SA_RESTART... no-op flag bits)"
 fi
 
+# --- stdlib.h: getprogname/setprogname (BSD). picolibc omits them; NanOS provides them
+#     (libc-glue, seeded from argv[0] by crt0). gnulib's error()/coreutils want getprogname. ---
+STDLIB="$INC/stdlib.h"
+if [ -f "$STDLIB" ] && ! grep -q 'getprogname' "$STDLIB"; then
+	{ echo "#ifdef __nanos__"; echo "const char* getprogname(void);"; \
+	  echo "void setprogname(const char*);"; echo "#endif"; } >> "$STDLIB"
+	echo "  patched stdlib.h (getprogname/setprogname)"
+fi
+
+# --- stdio_ext.h: glibc's __fpending (used by gnulib closeout). picolibc has no such header;
+#     ship a minimal one. NanOS implements __fpending (libc-glue) as a safe 0. ---
+EXT="$INC/stdio_ext.h"
+if [ ! -e "$EXT" ]; then
+	{ echo "#ifndef _STDIO_EXT_H"; echo "#define _STDIO_EXT_H"; echo "#include <stdio.h>"; \
+	  echo "#ifdef __cplusplus"; echo 'extern "C" {'; echo "#endif"; \
+	  echo "size_t __fpending(FILE*);"; \
+	  echo "#ifdef __cplusplus"; echo "}"; echo "#endif"; echo "#endif"; } > "$EXT"
+	echo "  added stdio_ext.h (__fpending)"
+fi
+
 # --- sys/utime.h: picolibc declares struct utimbuf but leaves utime() to a per-arch override
 #     that i686-elf does not ship. NanOS exports utime, so add the prototype. ---
 UT="$INC/sys/utime.h"

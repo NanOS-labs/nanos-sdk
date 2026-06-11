@@ -1,0 +1,12 @@
+[binaries]
+c = 'i686-nanos-gcc'
+cpp = 'i686-nanos-g++'
+ar = 'i686-nanos-ar'
+strip = 'i686-nanos-strip'
+pkg-config = 'i686-nanos-pkg-config'
+
+[host_machine]
+system = 'nanos'
+cpu_family = 'x86'
+cpu = 'i686'
+endian = 'little'

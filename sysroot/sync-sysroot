@@ -1,0 +1,39 @@
+#!/bin/sh
+# sync-sysroot — populate the i686-nanos sysroot ($PREFIX/i686-nanos/{include,lib}) so the cross
+# gcc finds headers + the C library by default (no manual -I/-L). Headers come from picolibc +
+# the NanOS libc-glue; the link bits (crt0.o, nxhdr.o, libc.a=libc.ndl.a, nx.ld) come from a built
+# NanOS checkout (libc.ndl evolves with the kernel, so this is re-runnable).
+#
+# Usage: sync-sysroot --nanos=/path/to/NanOS [--prefix=/opt/i686-nanos] [--picolibc=/opt/picolibc/i686-elf]
+set -e
+PREFIX=/opt/i686-nanos
+PICO=/opt/picolibc/i686-elf
+NANOS=
+for a in "$@"; do case "$a" in
+	--nanos=*) NANOS="${a#*=}";;
+	--prefix=*) PREFIX="${a#*=}";;
+	--picolibc=*) PICO="${a#*=}";;
+esac; done
+[ -n "$NANOS" ] || { echo "need --nanos=/path/to/NanOS (built: bin/libc.ndl.a etc.)"; exit 1; }
+SYS="$PREFIX/i686-nanos"
+mkdir -p "$SYS/include" "$SYS/lib"
+
+echo "== headers: picolibc + NanOS libc-glue + SyscallNr =="
+cp -a "$PICO/include/." "$SYS/include/"
+[ -d "$NANOS/user/libc-glue/include" ] && cp -a "$NANOS/user/libc-glue/include/." "$SYS/include/"
+cp "$NANOS/kernel/SyscallNr.h" "$SYS/include/" 2>/dev/null || true
+
+echo "== link bits from the NanOS build =="
+cp "$NANOS/bin/libc.ndl.a" "$SYS/lib/libc.a"          # -lc resolves to the import library
+cp "$NANOS/bin/crt0.o"     "$SYS/lib/crt0.o"
+cp "$NANOS/bin/nxhdr.o"    "$SYS/lib/nxhdr.o"
+cp "$NANOS/user/nx.ld"     "$SYS/lib/nx.ld"
+# Ship libc.ndl itself next to the sysroot so the port driver can stage it into the image.
+cp "$NANOS/bin/libc.ndl"   "$SYS/lib/libc.ndl" 2>/dev/null || true
+
+echo "== sysroot ready: $SYS =="
+ls -1 "$SYS/lib"
+
+echo "== build i686-nanos-mknx (ELF -> .nxe) =="
+cc -O2 -Wall -I"$NANOS/kernel" -o "$PREFIX/bin/i686-nanos-mknx" "$NANOS/tools/mknx.c"
+echo "  installed $PREFIX/bin/i686-nanos-mknx"

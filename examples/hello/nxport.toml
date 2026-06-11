@@ -1,0 +1,4 @@
+name = "hello"
+source = "dir:src"
+build = "make"
+install = "/apps/hello"

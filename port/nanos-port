@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+"""nanos-port — build a Linux app for NanOS from an nxport.toml manifest.
+
+Flow: fetch source -> (hooks/pre_configure.sh) -> configure/build for i686-nanos -> (hooks/
+post_build.sh) -> mknx the produced ELF -> <name>.nxe, and print an install descriptor the NanOS
+image step consumes. Run inside the nanos-sdk container with the toolchain on PATH.
+
+Manifest (nxport.toml):
+  name="vim"; source="git:URL @ ref" | "tar:URL" | "dir:."; build="autotools|cmake|meson|make"
+  configure=[...]; cache=[...]; needs=["libc.ndl",...]; data=["src -> dst"]; install="/apps/vim"
+  binary="src/vim"   # optional: path to the linked ELF (default: <name>)
+Optional hooks/: pre_configure.sh, post_build.sh (run if present).
+"""
+import os, sys, shutil, subprocess, tomllib
+
+def run(cmd, cwd=None, env=None):
+    print("+", " ".join(cmd) if isinstance(cmd, list) else cmd, flush=True)
+    subprocess.run(cmd, cwd=cwd, env=env, shell=isinstance(cmd, str), check=True)
+
+def main():
+    portdir = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else ".")
+    sdk = os.environ.get("SDK", "/sdk")
+    m = tomllib.load(open(os.path.join(portdir, "nxport.toml"), "rb"))
+    name = m["name"]; build = m.get("build", "autotools")
+    stage = os.path.join("/tmp", "port-" + name)
+    shutil.rmtree(stage, ignore_errors=True)
+
+    # ---- fetch ----
+    src = m["source"]
+    if src.startswith("git:"):
+        spec = src[4:]; ref = None
+        if "@" in spec: url, ref = [x.strip() for x in spec.split("@", 1)]
+        else: url = spec.strip()
+        run(["git", "clone", "--depth", "1"] + (["--branch", ref] if ref else []) + [url, stage])
+    elif src.startswith("tar:"):
+        os.makedirs(stage)
+        run(f"wget -qO- '{src[4:]}' | tar xz --strip-components=1 -C '{stage}'")
+    elif src.startswith("dir:"):
+        shutil.copytree(os.path.join(portdir, src[4:]), stage)
+    else:
+        sys.exit("source must be git:/tar:/dir:")
+
+    hooks = os.path.join(portdir, "hooks")
+    def hook(n):
+        p = os.path.join(hooks, n)
+        if os.path.exists(p): run(["sh", p], cwd=stage, env={**os.environ, "STAGE": stage, "PORT": portdir})
+
+    hook("pre_configure.sh")
+
+    # ---- configure + build ----
+    cfg = m.get("configure", [])
+    if build == "autotools":
+        cache = os.path.join(stage, "nxport.cache")
+        with open(cache, "w") as f:
+            f.write(open(os.path.join(sdk, "port", "config.cache")).read())
+            for line in m.get("cache", []): f.write(line + "\n")
+        run(["./configure", "--host=i686-nanos", "--cache-file=" + cache] + cfg, cwd=stage)
+        run(["make", "-j%d" % os.cpu_count()], cwd=stage)
+    elif build == "cmake":
+        bdir = os.path.join(stage, "build-nanos"); os.makedirs(bdir)
+        run(["cmake", "-DCMAKE_TOOLCHAIN_FILE=" + os.path.join(sdk, "port", "toolchain-nanos.cmake")] + cfg + [".."], cwd=bdir)
+        run(["make", "-j%d" % os.cpu_count()], cwd=bdir)
+    elif build == "meson":
+        bdir = os.path.join(stage, "build-nanos")
+        run(["meson", "setup", "--cross-file", os.path.join(sdk, "port", "nanos-cross.meson")] + cfg + [bdir], cwd=stage)
+        run(["ninja", "-C", bdir])
+    elif build == "make":
+        run(["make", "CC=i686-nanos-gcc", "-j%d" % os.cpu_count()] + cfg, cwd=stage)
+    else:
+        sys.exit("unknown build: " + build)
+
+    hook("post_build.sh")
+
+    # ---- mknx -> .nxe ----
+    binary = os.path.join(stage, m.get("binary", name))
+    out = os.path.join(portdir, name + ".nxe")
+    needs = []
+    for n in m.get("needs", ["libc.ndl"]):
+        needs += ["--need", n]
+    run(["i686-nanos-mknx", binary, out] + needs)
+    print("== produced", out, "==")
+    # install descriptor for the NanOS image step
+    with open(os.path.join(portdir, name + ".install"), "w") as f:
+        f.write("name=%s\n" % name)
+        f.write("install=%s\n" % m.get("install", "/apps/" + name))
+        for d in m.get("data", []): f.write("data=%s\n" % d)
+    print("== install descriptor:", name + ".install", "==")
+
+if __name__ == "__main__":
+    main()

@@ -24,6 +24,12 @@ cp -a "$PICO/include/." "$SYS/include/"
 [ -d "$NANOS/user/libc-glue/include" ] && cp -a "$NANOS/user/libc-glue/include/." "$SYS/include/"
 cp "$NANOS/kernel/SyscallNr.h" "$SYS/include/" 2>/dev/null || true
 
+# Adapt the picolibc headers so __nanos__ is a hosted POSIX target (lstat/mknod, nanosleep/
+# clock_gettime, sigaction flag bits, getrlimit). Centralised + idempotent in posix-hosted-patch.sh.
+HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+echo "== adapt picolibc headers -> hosted NanOS POSIX =="
+sh "$HERE/posix-hosted-patch.sh" "$SYS/include"
+
 echo "== link bits from the NanOS build =="
 cp "$NANOS/bin/libc.ndl.a" "$SYS/lib/libc.a"          # -lc resolves to the import library
 cp "$NANOS/bin/crt0.o"     "$SYS/lib/crt0.o"

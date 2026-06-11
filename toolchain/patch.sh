@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
 # patch.sh — teach an extracted binutils + gcc source tree the i686-nanos OS target.
 # Usage: patch.sh <binutils-srcdir> <gcc-srcdir> <sdk-toolchain-dir>
 set -e

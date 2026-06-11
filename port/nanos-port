@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-3.0-or-later
 """nanos-port — build a Linux app for NanOS from an nxport.toml manifest.
 
 Flow: fetch source -> (hooks/pre_configure.sh) -> configure/build for i686-nanos -> (hooks/

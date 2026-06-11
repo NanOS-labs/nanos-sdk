@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
 # build-toolchain.sh — build the native i686-nanos cross toolchain (binutils + gcc) from source.
 # Run inside a container with build deps (the nanos-build image has them). Installs to $PREFIX.
 set -e

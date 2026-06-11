@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
 # sync-sysroot — populate the i686-nanos sysroot ($PREFIX/i686-nanos/{include,lib}) so the cross
 # gcc finds headers + the C library by default (no manual -I/-L). Headers come from picolibc +
 # the NanOS libc-glue; the link bits (crt0.o, nxhdr.o, libc.a=libc.ndl.a, nx.ld) come from a built

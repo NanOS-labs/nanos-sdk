@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
 /* i386/nanos.h — NanOS (i686-nanos) target overrides, layered on top of i386elf.h.
  *
  * Makes a stock i386 ELF GCC produce NanOS programs: define the __nanos__ system macros, start

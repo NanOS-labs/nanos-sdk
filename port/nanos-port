@@ -45,6 +45,14 @@ def main():
         p = os.path.join(hooks, n)
         if os.path.exists(p): run(["sh", p], cwd=stage, env={**os.environ, "STAGE": stage, "PORT": portdir})
 
+    # Replace the project's (often ancient) config.sub/config.guess with our nanos-aware ones,
+    # so --host=i686-nanos is accepted everywhere (autotools projects bundle their own).
+    for root, _dirs, files in os.walk(stage):
+        for fn in files:
+            if fn in ("config.sub", "config.guess"):
+                shutil.copy(os.path.join(sdk, "port", fn), os.path.join(root, fn))
+                os.chmod(os.path.join(root, fn), 0o755)
+
     hook("pre_configure.sh")
 
     # ---- configure + build ----

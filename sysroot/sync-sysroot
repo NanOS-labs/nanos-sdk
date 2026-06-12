@@ -44,3 +44,19 @@ ls -1 "$SYS/lib"
 echo "== build i686-nanos-mknx (ELF -> .nxe) =="
 cc -O2 -Wall -I"$NANOS/kernel" -o "$PREFIX/bin/i686-nanos-mknx" "$NANOS/tools/mknx.c"
 echo "  installed $PREFIX/bin/i686-nanos-mknx"
+
+# Make autoconf's link probes honest. The gcc spec links with --unresolved-symbols=ignore-all
+# (so mknx can auto-import libc.ndl DATA), which makes every AC_CHECK_FUNC pass. Install a wrapper
+# that forces report-all on conftest links and supplies a weak stub for the pure-data exports, so
+# function detection reflects what libc.ndl actually provides. See toolchain/conftest-strict-wrapper.sh.
+echo "== install honest-conftest gcc wrapper + data stub =="
+TC="$HERE/../toolchain"
+GCC="$PREFIX/bin/i686-nanos-gcc"
+if [ -f "$GCC" ] && ! head -1 "$GCC" 2>/dev/null | grep -q '/bin/sh'; then   # not yet wrapped
+	mv "$GCC" "$GCC.real"
+	cp "$TC/conftest-strict-wrapper.sh" "$GCC"
+	chmod +x "$GCC"
+	echo "  wrapped i686-nanos-gcc (real driver -> i686-nanos-gcc.real)"
+fi
+# (Re)generate the conftest data stub from the just-installed libc.a — kept in sync with the libc.
+PATH="$PREFIX/bin:$PATH" sh "$TC/gen-conftest-stubs.sh" "$SYS/lib"

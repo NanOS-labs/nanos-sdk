@@ -67,6 +67,37 @@ if [ -f "$STDLIB" ] && ! grep -q 'getprogname' "$STDLIB"; then
 	echo "  patched stdlib.h (getprogname/setprogname)"
 fi
 
+# --- stdio.h: <sys/features.h> advertises _POSIX_THREAD_SAFE_FUNCTIONS for __nanos__ (it was
+#     taken from the cygwin block for nanosleep/clock_gettime), which promises flockfile and the
+#     getc_unlocked() family. picolibc's stdio.h never declares them, so that promise is a lie —
+#     gnulib (getopt, closeout, ...) then calls undeclared flockfile. NanOS stdio is single-
+#     threaded per process, so FILE locking is a genuine no-op and the *_unlocked variants equal
+#     the locked ones; declaring them here makes the advertised capability truthful. ---
+STDIO="$INC/stdio.h"
+if [ -f "$STDIO" ] && ! grep -q 'NanOS stdio is single-threaded' "$STDIO"; then
+	awk '
+	  /^#endif \/\* _STDIO_H_ \*\/$/ && !done {
+	    print "#ifdef __nanos__"
+	    print "/* NanOS stdio is single-threaded per process: FILE locking is a no-op and the"
+	    print "   *_unlocked variants are identical to the locked ones, so _POSIX_THREAD_SAFE_FUNCTIONS"
+	    print "   (advertised in <sys/features.h>) is honoured truthfully. */"
+	    print "static __inline void flockfile(FILE *__f) { (void)__f; }"
+	    print "static __inline void funlockfile(FILE *__f) { (void)__f; }"
+	    print "static __inline int  ftrylockfile(FILE *__f) { (void)__f; return 0; }"
+	    print "#ifndef getc_unlocked"
+	    print "#define getc_unlocked(fp)    getc(fp)"
+	    print "#define putc_unlocked(c, fp) putc((c), (fp))"
+	    print "#define getchar_unlocked()   getchar()"
+	    print "#define putchar_unlocked(c)  putchar(c)"
+	    print "#endif"
+	    print "#endif /* __nanos__ */"
+	    done = 1
+	  }
+	  { print }
+	' "$STDIO" > "$STDIO.tmp" && mv "$STDIO.tmp" "$STDIO"
+	echo "  patched stdio.h (flockfile/funlockfile/ftrylockfile + getc_unlocked family no-ops)"
+fi
+
 # --- stdio_ext.h: glibc's __fpending (used by gnulib closeout). picolibc has no such header;
 #     ship a minimal one. NanOS implements __fpending (libc-glue) as a safe 0. ---
 EXT="$INC/stdio_ext.h"
@@ -76,6 +107,17 @@ if [ ! -e "$EXT" ]; then
 	  echo "size_t __fpending(FILE*);"; \
 	  echo "#ifdef __cplusplus"; echo "}"; echo "#endif"; echo "#endif"; } > "$EXT"
 	echo "  added stdio_ext.h (__fpending)"
+fi
+
+# --- dirent.h: the BSD/glibc d_type constants (DT_DIR, DT_REG, ...). picolibc's minimal dirent.h
+#     omits them; many tools (grep -r, find, ...) reference them. Standard values. ---
+DIRENT="$INC/dirent.h"
+if [ -f "$DIRENT" ] && ! grep -q 'DT_DIR' "$DIRENT"; then
+	{ echo "#ifdef __nanos__"; echo "#define DT_UNKNOWN 0"; echo "#define DT_FIFO 1";
+	  echo "#define DT_CHR 2"; echo "#define DT_DIR 4"; echo "#define DT_BLK 6";
+	  echo "#define DT_REG 8"; echo "#define DT_LNK 10"; echo "#define DT_SOCK 12";
+	  echo "#define DT_WHT 14"; echo "#endif"; } >> "$DIRENT"
+	echo "  patched dirent.h (DT_* constants)"
 fi
 
 # --- sys/utime.h: picolibc declares struct utimbuf but leaves utime() to a per-arch override

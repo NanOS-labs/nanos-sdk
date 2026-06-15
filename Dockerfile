@@ -21,6 +21,7 @@ RUN git clone --depth 1 --branch "${PICOLIBC_VERSION}" https://github.com/picoli
         -Dprefix=/opt/picolibc/i686-elf -Dincludedir=include -Dlibdir=lib \
         -Dmultilib=false -Dpicocrt=false -Dpicolib=true -Dsemihost=false -Dposix-console=true \
         -Dtests=false -Dformat-default=integer -Dthread-local-storage=false \
+        -Derrno-function=__errno_location \
     && ninja -C build && ninja -C build install && cd / && rm -rf /tmp/picolibc /tmp/pico.txt
 COPY . /sdk
 RUN ln -s /sdk/port/nanos-port /usr/local/bin/nanos-port \

@@ -1,9 +1,9 @@
-# nanos-sdk — the i686-nanos cross toolchain + port tooling, frozen into an image.
-# Builds binutils+gcc for the i686-nanos target (build-toolchain.sh), picolibc, and the
+# nanos-sdk — the x86_64-nanos cross toolchain + port tooling, frozen into an image.
+# Builds binutils+gcc for the x86_64-nanos target (build-toolchain.sh), picolibc, and the
 # autotools/cmake/meson/pkg-config needed to drive ports. The sysroot link bits + mknx are
 # injected at use time from a built NanOS checkout via `sync-sysroot` (libc.ndl tracks the kernel).
 FROM debian:trixie-slim
-ENV PREFIX=/opt/i686-nanos
+ENV PREFIX=/opt/x86_64-nanos
 ENV PATH="${PREFIX}/bin:${PATH}"
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates wget make build-essential bison flex texinfo \
@@ -13,12 +13,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY toolchain /sdk/toolchain
 COPY build-toolchain.sh /sdk/build-toolchain.sh
 RUN WORK=/tmp/tc PREFIX=${PREFIX} /sdk/build-toolchain.sh all && rm -rf /tmp/tc
-# picolibc headers/lib for the sysroot (i686-elf build works for the i686 machine).
+# picolibc headers/lib for the sysroot (x86_64-elf build for the long-mode machine).
 ARG PICOLIBC_VERSION=1.8.6
-COPY picolibc-i686-elf.txt /tmp/pico.txt
+COPY picolibc-x86_64-elf.txt /tmp/pico.txt
 RUN git clone --depth 1 --branch "${PICOLIBC_VERSION}" https://github.com/picolibc/picolibc /tmp/picolibc \
     && cd /tmp/picolibc && meson setup build --cross-file /tmp/pico.txt \
-        -Dprefix=/opt/picolibc/i686-elf -Dincludedir=include -Dlibdir=lib \
+        -Dprefix=/opt/picolibc/x86_64-elf -Dincludedir=include -Dlibdir=lib \
         -Dmultilib=false -Dpicocrt=false -Dpicolib=true -Dsemihost=false -Dposix-console=true \
         -Dtests=false -Dformat-default=integer -Dthread-local-storage=false \
         -Derrno-function=__errno_location \

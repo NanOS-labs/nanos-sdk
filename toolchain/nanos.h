@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-/* i386/nanos.h — NanOS (i686-nanos) target overrides, layered on top of i386elf.h.
+/* i386/nanos.h — NanOS target overrides, layered on top of the base i386 ELF target headers
+ * (i386elf.h for i686-nanos; i386elf.h + x86-64.h for x86_64-nanos). Arch-neutral: the 32/64-bit
+ * ABI (LP64, SSE2 baseline) comes from those base headers; this file only adds NanOS specifics.
  *
- * Makes a stock i386 ELF GCC produce NanOS programs: define the __nanos__ system macros, start
+ * Makes a stock i386/x86-64 ELF GCC produce NanOS programs: define the __nanos__ system macros, start
  * at crt0.o + the .nxe header object (no crtbegin/crtend), link with the NanOS linker script and
  * keep relocations so mknx can build the .nxe relocation table, and pull the C library from
  * libc.ndl's import library (installed as libc.a in the sysroot). Static model; the .ndl
@@ -27,7 +29,9 @@
 #undef ENDFILE_SPEC
 #define ENDFILE_SPEC ""
 
-/* Link at the NanOS base via nx.ld (overridable with -T) and keep R_386_32 relocations for mknx.
+/* Link at the NanOS base via nx.ld (overridable with -T) and keep absolute relocations for mknx:
+ * R_386_32 on i686, R_X86_64_64 (+ R_X86_64_32S) on x86_64 — consistent with tools/mknx.c and the
+ * low-2GiB small-model load base (decision #1). gcc emits them; --emit-relocs preserves them.
  * --unresolved-symbols=ignore-all lets direct references to libc.ndl DATA (stdout/errno/_ctype_b/
  * environ) stay undefined here; mknx turns them into auto-imports (Windows/MinGW-style) that the
  * loader patches with the real address, so stock code links without the dllimport shim. Missing

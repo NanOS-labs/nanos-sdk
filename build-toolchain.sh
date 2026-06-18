@@ -1,12 +1,13 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
-# build-toolchain.sh — build the native i686-nanos cross toolchain (binutils + gcc) from source.
+# build-toolchain.sh — build a native nanos cross toolchain (binutils + gcc) from source.
+# TARGET selects the triplet (default x86_64-nanos; TARGET=i686-nanos for the retired 32-bit one).
 # Run inside a container with build deps (the nanos-build image has them). Installs to $PREFIX.
 set -e
 BINUTILS_VERSION="${BINUTILS_VERSION:-2.43}"
 GCC_VERSION="${GCC_VERSION:-14.2.0}"
-TARGET=i686-nanos
-PREFIX="${PREFIX:-/opt/i686-nanos}"
+TARGET="${TARGET:-x86_64-nanos}"          # cut-over default; i686-nanos retired (spec §0.1)
+PREFIX="${PREFIX:-/opt/$TARGET}"
 WORK="${WORK:-/opt/nanos-sdk-build}"
 SDK="$(cd "$(dirname "$0")" && pwd)"
 JOBS="$(nproc)"

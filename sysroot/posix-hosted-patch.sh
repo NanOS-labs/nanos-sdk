@@ -158,6 +158,11 @@ if [ -f "$RES" ] && ! grep -q 'getrlimit' "$RES"; then
 	    print "   and our struct uses unsigned long directly, so we avoid clashing with that. */"
 	    print "int getrlimit(int, struct rlimit*);"
 	    print "int setrlimit(int, const struct rlimit*);"
+	    print "#define PRIO_PROCESS 0"
+	    print "#define PRIO_PGRP    1"
+	    print "#define PRIO_USER    2"
+	    print "int getpriority(int, int);"
+	    print "int setpriority(int, int, int);"
 	    print "#endif /* __nanos__ */"
 	  }
 	  { print }

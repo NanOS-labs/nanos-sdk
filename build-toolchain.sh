@@ -37,6 +37,18 @@ rm -rf build-gcc; mkdir build-gcc; cd build-gcc
 	--disable-nls --enable-languages=c,c++ --without-headers
 make -j"$JOBS" all-gcc all-target-libgcc
 make install-gcc install-target-libgcc
+
+# Honest-conftest wrapper: the gcc spec links --unresolved-symbols=ignore-all (for mknx's
+# data auto-import), which makes autoconf's AC_CHECK_FUNC link tests pass for EVERY function.
+# Interpose <triple>-gcc with the wrapper (real driver -> <triple>-gcc.real) so conftest links
+# are strict. The per-libc data stub it pairs with is (re)generated at port time, once a real
+# libc.a is in the sysroot (see gen-conftest-stubs.sh). Installed for every TARGET, not just i686.
+if [ ! -e "$PREFIX/bin/$TARGET-gcc.real" ]; then
+	mv "$PREFIX/bin/$TARGET-gcc" "$PREFIX/bin/$TARGET-gcc.real"
+	cp "$SDK/toolchain/conftest-strict-wrapper.sh" "$PREFIX/bin/$TARGET-gcc"
+	chmod +x "$PREFIX/bin/$TARGET-gcc"
+fi
+
 echo "== toolchain installed to $PREFIX =="
 "$PREFIX/bin/$TARGET-gcc" --version | head -1
 "$PREFIX/bin/$TARGET-gcc" -dumpmachine

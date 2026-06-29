@@ -21,6 +21,10 @@ def run(cmd, cwd=None, env=None):
 def main():
     portdir = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else ".")
     sdk = os.environ.get("SDK", "/sdk")
+    # Arch selection: NX_HOST picks the cross triple (and thus the toolchain prefix). The i686
+    # default keeps the original 32-bit flow byte-for-byte; ARCH=x86_64 sets NX_HOST=x86_64-nanos
+    # so configure --host, CC and mknx all target the 64-bit sysroot.
+    host = os.environ.get("NX_HOST", "i686-nanos")
     m = tomllib.load(open(os.path.join(portdir, "nxport.toml"), "rb"))
     name = m["name"]; build = m.get("build", "autotools")
     stage = os.path.join("/tmp", "port-" + name)
@@ -57,13 +61,24 @@ def main():
     hook("pre_configure.sh")
 
     # ---- configure + build ----
-    cfg = m.get("configure", [])
+    # Expand ${PREFIX} (and any other env var) in configure args so a single manifest is
+    # arch-neutral: PREFIX is set per-arch by the caller (port-build.sh: /work/toolchain/<triple>).
+    # Autotools libtool/.la files bake the configure --prefix into install-time program relinks, so
+    # a post-install prefix override is not enough for ports that build a helper program (libiconv's
+    # `iconv`); the prefix must be correct at configure time. Args without a $token are unchanged, so
+    # literal-path manifests (the i686 SDK_WORK ports) are unaffected.
+    cfg = [os.path.expandvars(x) for x in m.get("configure", [])]
     if build == "autotools":
         cache = os.path.join(stage, "nxport.cache")
         with open(cache, "w") as f:
             f.write(open(os.path.join(sdk, "port", "config.cache")).read())
             for line in m.get("cache", []): f.write(line + "\n")
-        run(["./configure", "--host=i686-nanos", "--cache-file=" + cache] + cfg, cwd=stage)
+            # LP64 (x86_64): the shared config.cache pins the 32-bit sizeofs; long/pointer/size_t
+            # are 8 bytes on x86_64-nanos. A cache file is sourced last-wins, so append the right
+            # answers after everything else. (Mirrors NanOS's nx-port-build.sh NX_LP64 path.)
+            if os.environ.get("NX_LP64") == "1":
+                f.write("ac_cv_sizeof_long=8\nac_cv_sizeof_void_p=8\nac_cv_sizeof_size_t=8\n")
+        run(["./configure", "--host=" + host, "--cache-file=" + cache] + cfg, cwd=stage)
         hook("post_configure.sh")
         run(["make", "-j%d" % os.cpu_count(), m.get("make_target", "")] if m.get("make_target") else ["make", "-j%d" % os.cpu_count()], cwd=stage)
     elif build == "cmake":
@@ -77,7 +92,7 @@ def main():
         hook("post_configure.sh")
         run(["ninja", "-C", bdir])
     elif build == "make":
-        run(["make", "CC=i686-nanos-gcc", "-j%d" % os.cpu_count()] + cfg, cwd=stage)
+        run(["make", "CC=" + host + "-gcc", "-j%d" % os.cpu_count()] + cfg, cwd=stage)
     else:
         sys.exit("unknown build: " + build)
 
@@ -85,7 +100,7 @@ def main():
 
     # ---- library port: install into the SDK sysroot, no app .nxe ----
     if m.get("install") == "sysroot":
-        sysroot = os.path.join(os.environ.get("PREFIX", "/opt/i686-nanos"), "i686-nanos")
+        sysroot = os.path.join(os.environ.get("PREFIX", "/opt/" + host), host)
         os.makedirs(os.path.join(sysroot, "lib"), exist_ok=True)
         os.makedirs(os.path.join(sysroot, "include"), exist_ok=True)
         for rel in m.get("sysroot_libs", []):
@@ -103,7 +118,7 @@ def main():
     needs = []
     for n in m.get("needs", ["libc.ndl"]):
         needs += ["--need", n]
-    run(["i686-nanos-mknx", binary, out] + needs)
+    run([host + "-mknx", binary, out] + needs)
     print("== produced", out, "==")
     # install descriptor for the NanOS image step
     with open(os.path.join(portdir, name + ".install"), "w") as f:

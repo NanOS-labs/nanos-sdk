@@ -1,7 +1,11 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# i686-nanos-gcc wrapper — make autoconf's link probes honest.
+# <triple>-nanos-gcc wrapper — make autoconf's link probes honest.
+#
+# Triple-agnostic: derives the cross triple from its own install name (<triple>-gcc), so the
+# SAME script serves i686-nanos and x86_64-nanos. Installed as <triple>-gcc; the real driver is
+# <triple>-gcc.real next to it. (Originally i686-only; generalised for the x86_64 cut-over.)
 #
 # The NanOS gcc spec links with --unresolved-symbols=ignore-all so stock code can reference
 # libc.ndl DATA (stdout/errno/environ) that mknx turns into Windows/MinGW-style auto-imports.
@@ -20,8 +24,6 @@
 # pure-data exports. Net effect for a conftest: functions resolve strictly from libc.a, data
 # resolves from the weak stub, and genuinely-absent symbols fail — faithful detection, while
 # real program links keep ignore-all for the auto-import.
-#
-# Installed as i686-nanos-gcc; the real driver is i686-nanos-gcc.real next to it.
 strict=
 prev=
 for a in "$@"; do
@@ -34,11 +36,13 @@ for a in "$@"; do
 done
 
 dir=$(dirname "$0")
-real="$dir/i686-nanos-gcc.real"
+self=$(basename "$0")           # <triple>-gcc
+triple=${self%-gcc}             # <triple>  (e.g. i686-nanos / x86_64-nanos)
+real="$dir/$self.real"
 
 if [ -n "$strict" ]; then
-	# Locate the data stub relative to the driver (toolchain/bin -> ../i686-nanos/lib).
-	stub="$dir/../i686-nanos/lib/conftest-data-stubs.o"
+	# Locate the data stub relative to the driver (toolchain/bin -> ../<triple>/lib).
+	stub="$dir/../$triple/lib/conftest-data-stubs.o"
 	[ -f "$stub" ] || stub=$("$real" -print-sysroot 2>/dev/null)/lib/conftest-data-stubs.o
 	if [ -f "$stub" ]; then
 		exec "$real" "$@" "$stub" -Wl,--unresolved-symbols=report-all

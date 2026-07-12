@@ -23,13 +23,19 @@ fi
 
 step "clone forks into the sdk-work layout"
 mkdir -p "$SDK_WORK"
+FAILED_CLONES="$SDK_WORK/.bootstrap-failed-clones"
+: > "$FAILED_CLONES"
 # shellcheck disable=SC2034  # base/desc are manifest columns other consumers read
 grep -v '^#' "$HERE/ports.manifest" | while IFS='|' read -r name repo layout base checkout desc; do
   [ -n "$name" ] || continue
   dest="$SDK_WORK/$checkout"
   if [ -e "$dest" ]; then echo "  $checkout: present"; continue; fi
   echo "  cloning $repo -> $checkout"
-  git clone -q "$ORG/$repo.git" "$dest"
+  if ! git clone -q "$ORG/$repo.git" "$dest"; then
+    echo "  WARNING: clone of $repo FAILED — continuing, but the workspace is incomplete"
+    echo "$repo" >> "$FAILED_CLONES"
+    continue
+  fi
   if [ "$layout" = multi ] && [ "$name" = inetutils ]; then
     ln -sfn "$dest/inetutils-services-port" "$SDK_WORK/inetutils-services-port"
   fi
@@ -86,3 +92,10 @@ cat <<'EOF'
   make externals && make image64                   # the image
   # host GL stack (macOS, optional): qemu-nanos/nanos/build-qemu.sh + virglrenderer-nanos/nanos/build-virgl.sh
 EOF
+
+if [ -s "$FAILED_CLONES" ]; then
+  step "INCOMPLETE — these repos failed to clone"
+  cat "$FAILED_CLONES"
+  exit 1
+fi
+rm -f "$FAILED_CLONES"

@@ -36,6 +36,10 @@ grep -v '^#' "$HERE/ports.manifest" | while IFS='|' read -r name repo layout bas
     echo "$repo" >> "$FAILED_CLONES"
     continue
   fi
+  # Normalize mtimes: git writes files in arbitrary order, so a committed configured tree
+  # (grep's aclocal.m4 vs configure.ac) can look "outdated" to make and retrigger automake,
+  # which the containers do not ship. Equal mtimes = up to date.
+  find "$dest" -not -path '*/.git/*' -exec touch -t 202601010000 {} + 2>/dev/null || true
   if [ "$layout" = multi ] && [ "$name" = inetutils ]; then
     ln -sfn "$dest/inetutils-services-port" "$SDK_WORK/inetutils-services-port"
   fi

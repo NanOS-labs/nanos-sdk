@@ -1,0 +1,28 @@
+# NanOS-labs port/fork manifest — consumed by scripts/migrate-fork.sh and scripts/bootstrap.sh
+# name|repo|layout|base|checkout|desc
+#   layout: portdir (repo root = the *-port dir, source in subdir)
+#           srcroot (repo root = the source tree itself)
+#           multi   (repo root holds several port dirs; special-cased)
+#   base:   tarball:<path-relative-to-SDK_WORK> (pristine base commit, then audited overlay)
+#           tree (the live workspace tree IS the base; provenance noted in the commit)
+#   checkout: where bootstrap.sh clones it, relative to $SDK_WORK
+zlib|zlib-nanos|portdir|tree|zlib-port|zlib 1.3.1 for NanOS + port recipe
+openssl|openssl-nanos|portdir|tree|openssl-port|OpenSSL 3.0.15 port (CSPRNG/TLS)
+dropbear|dropbear-nanos|portdir|tree|dropbear-port|Dropbear SSH server port
+git|git-nanos|portdir|tree|git-port|git 2.54.0 port
+htop|htop-nanos|portdir|tree|htop-port|htop 3.5.1 port
+wget|wget-nanos|portdir|tree|wget-port|wget 1.21.4 port (TLS client)
+libpng|libpng-nanos|portdir|tree|libpng-port|libpng 1.6.43 port
+libjpeg|libjpeg-nanos|portdir|tree|libjpeg-port|libjpeg port
+darkhttpd|darkhttpd-nanos|portdir|tree|darkhttpd-port|darkhttpd web server port
+ncprobe|ncprobe|portdir|tree|ncprobe-port|ncprobe - NanOS-native network console probe (own code)
+inetutils|inetutils-nanos|multi|tree|inetutils-port|GNU inetutils 2.5 ports (ping + services)
+toybox|toybox-nanos|srcroot|tarball:toybox-0.8.11.tar.gz|toybox-0.8.11|toybox 0.8.11 (login/su/passwd/id)
+sudo|sudo-nanos|srcroot|tarball:sudo-1.9.15p5.tar.gz|sudo-1.9.15p5|sudo 1.9.15p5
+grep|grep-nanos|srcroot|tarball:grep-3.11.tar.xz|grep-3.11|GNU grep 3.11
+bzip2|bzip2-nanos|srcroot|tarball:bzip2.tgz|bzip2-1.0.8|bzip2 1.0.8
+busybox|busybox-nanos|srcroot|tarball:busybox-1.36.1.tar.bz2|busybox-1.36.1|busybox 1.36.1 (udhcpc)
+libdrm|libdrm-nanos|portdir|tree|libdrm-port|libdrm 2.4.123 + NanOS patch + recipe
+mesa|mesa-nanos|portdir|tree|mesa-port|Mesa 24.2.8 + 4 NanOS patches + GL build recipes (nwm-gl/glkms/gles2info)
+qemu|qemu-nanos|portdir|tree|qemu-fork-build|QEMU host fork - macOS virgl 3D-scanout fixes
+virglrenderer|virglrenderer-nanos|portdir|tree|virgl-fork-build|virglrenderer 1.3.0 + vendored kosmickrisp patches + drain branch

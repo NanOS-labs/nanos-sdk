@@ -25,6 +25,12 @@ def main():
     # default keeps the original 32-bit flow byte-for-byte; ARCH=x86_64 sets NX_HOST=x86_64-nanos
     # so configure --host, CC and mknx all target the 64-bit sysroot.
     host = os.environ.get("NX_HOST", "i686-nanos")
+    # Make ${NX_HOST} usable in nxport.toml configure args (expandvars below): default it in
+    # the environment too, so the i686 flow (which never exports it) expands identically.
+    os.environ.setdefault("NX_HOST", host)
+    # Arch-conditional extra CFLAGS a recipe can splice in as ${NXPORT_EXTRA_CFLAGS} (e.g. the
+    # x86_64 small-model/no-PIC/data-import set); default empty so i686 recipes expand clean.
+    os.environ.setdefault("NXPORT_EXTRA_CFLAGS", "")
     m = tomllib.load(open(os.path.join(portdir, "nxport.toml"), "rb"))
     name = m["name"]; build = m.get("build", "autotools")
     stage = os.path.join("/tmp", "port-" + name)

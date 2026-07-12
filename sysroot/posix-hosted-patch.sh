@@ -73,6 +73,15 @@ fi
 #     gnulib (getopt, closeout, ...) then calls undeclared flockfile. NanOS stdio is single-
 #     threaded per process, so FILE locking is a genuine no-op and the *_unlocked variants equal
 #     the locked ones; declaring them here makes the advertised capability truthful. ---
+# --- stdlib.h: guard picolibc's 3-arg itoa/utoa prototypes behind !__NANOS_NO_ITOA so ports
+#     that carry their OWN itoa/utoa with a different signature (busybox's 1-arg char* pair)
+#     can compile with -D__NANOS_NO_ITOA instead of patching busybox. ---
+STDLIB2="$INC/stdlib.h"
+if [ -f "$STDLIB2" ] && ! grep -q '__NANOS_NO_ITOA' "$STDLIB2"; then
+	sed -i.bak 's/^#if __MISC_VISIBLE$/#if __MISC_VISIBLE \&\& !defined(__NANOS_NO_ITOA)/; t' "$STDLIB2" && rm -f "$STDLIB2.bak"
+	echo "  patched stdlib.h (itoa/utoa behind !__NANOS_NO_ITOA)"
+fi
+
 STDIO="$INC/stdio.h"
 if [ -f "$STDIO" ] && ! grep -q 'NanOS stdio is single-threaded' "$STDIO"; then
 	awk '
@@ -84,12 +93,11 @@ if [ -f "$STDIO" ] && ! grep -q 'NanOS stdio is single-threaded' "$STDIO"; then
 	    print "static __inline void flockfile(FILE *__f) { (void)__f; }"
 	    print "static __inline void funlockfile(FILE *__f) { (void)__f; }"
 	    print "static __inline int  ftrylockfile(FILE *__f) { (void)__f; return 0; }"
-	    print "#ifndef getc_unlocked"
-	    print "#define getc_unlocked(fp)    getc(fp)"
-	    print "#define putc_unlocked(c, fp) putc((c), (fp))"
-	    print "#define getchar_unlocked()   getchar()"
-	    print "#define putchar_unlocked(c)  putchar(c)"
-	    print "#endif"
+	    print "/* The *_unlocked stdio variants are intentionally NOT defined as macros here: defining"
+	    print "   putc_unlocked/getc_unlocked as macros makes gnulib'"'"'s unlocked-io.h take a path"
+	    print "   (`defined putc_unlocked`) that then fails to resolve them in a separate compile. Single-"
+	    print "   threaded userland means locked == unlocked, so gnulib (and any caller) maps every *_unlocked"
+	    print "   to the plain locked call itself when HAVE_DECL_*_UNLOCKED=0. */"
 	    print "#endif /* __nanos__ */"
 	    done = 1
 	  }

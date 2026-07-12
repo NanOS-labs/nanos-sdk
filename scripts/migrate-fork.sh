@@ -68,7 +68,11 @@ fi
 
 echo "===== AUDIT: changes vs base for $NAME ====="
 git add -A
-git status --short | head -100
+# no `status | head` pipe: SIGPIPE from head + pipefail killed the script on big trees
+AUDIT_TMP=$(mktemp)
+git status --short > "$AUDIT_TMP"
+head -100 "$AUDIT_TMP"; n=$(wc -l < "$AUDIT_TMP"); [ "$n" -gt 100 ] && echo "... ($n entries total)"
+rm -f "$AUDIT_TMP"
 echo "===== (empty above = tree is pristine upstream) ====="
 
 if [ "$DRY" = "--dry-run" ]; then echo "dry-run: stopping before commit/push"; exit 0; fi

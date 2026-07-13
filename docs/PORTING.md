@@ -20,5 +20,5 @@
 4. In NanOS: `make port APP=vim` copies `<name>.nxe` into `bin/`; `make image` installs it as the
    `/apps/<name>` bundle with a `/bin/<name>.nxe` symlink.
 
-The toolchain is a real cross target: `i686-nanos-gcc -dumpmachine` -> `i686-nanos`, `__nanos__`
-is defined, and `./configure --host=i686-nanos` is accepted out of the box.
+The toolchain is a real cross target: `x86_64-nanos-gcc -dumpmachine` -> `x86_64-nanos`, `__nanos__`
+is defined, and `./configure --host=x86_64-nanos` is accepted out of the box.

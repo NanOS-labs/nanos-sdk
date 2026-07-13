@@ -27,9 +27,9 @@
 set -e
 LIBDIR="$1"
 [ -n "$LIBDIR" ] && [ -f "$LIBDIR/libc.a" ] || { echo "usage: gen-conftest-stubs.sh <dir-with-libc.a>"; exit 1; }
-NM=${NM:-i686-nanos-nm}
-CC=${CONFTEST_STUB_CC:-i686-nanos-gcc.real}
-command -v "$CC" >/dev/null 2>&1 || CC=i686-nanos-gcc
+NM=${NM:-x86_64-nanos-nm}
+CC=${CONFTEST_STUB_CC:-x86_64-nanos-gcc.real}
+command -v "$CC" >/dev/null 2>&1 || CC=x86_64-nanos-gcc
 
 LIBC="$LIBDIR/libc.a"
 tmp=$(mktemp -d)

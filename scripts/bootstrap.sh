@@ -72,7 +72,7 @@ fi
 # sqlite: `make sqlite` consumes ~/Projects/sqlite-nanos.
 [ -d "$HOME/Projects/sqlite-nanos/.git" ]  || git clone -q "$ORG/sqlite-nanos.git"  "$HOME/Projects/sqlite-nanos"
 
-step "toolchain (x86_64-nanos + i686-nanos)"
+step "toolchain (x86_64-nanos)"
 if [ -x "$SDK_WORK/toolchain/bin/x86_64-nanos-gcc" ]; then
   echo "  toolchain: present"
 else
@@ -87,11 +87,11 @@ echo "  (the nanos-build image is built by the NanOS repo itself: make docker-im
 step "done — next steps (inside the NanOS checkout)"
 cat <<'EOF'
   make docker-image
-  make ARCH=x86_64 zlib openssl ncurses            # library layer
-  make ARCH=x86_64 toybox sudo grep bzip2          # base userland
-  make ARCH=x86_64 ping wget inetd httpd udhcpc dropbear   # network layer
-  make ARCH=x86_64 vim htop git sqlite bash        # apps
-  make ARCH=x86_64 libpng libjpeg && make netsurf  # browser
+  make zlib openssl ncurses                # library layer
+  make toybox sudo grep bzip2              # base userland
+  make ping wget inetd httpd udhcpc dropbear   # network layer
+  make vim htop git sqlite bash            # apps
+  make libpng libjpeg                      # image codecs (browser-on-x86_64 is a follow-up port)
   make libdrm mesa gles2info glkms nwm-gl          # GL userspace
   make externals && make image64                   # the image
   # host GL stack (macOS, optional): qemu-nanos/nanos/build-qemu.sh + virglrenderer-nanos/nanos/build-virgl.sh
